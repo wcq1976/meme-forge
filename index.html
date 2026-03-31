@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MemeForge - AI Meme Generator | Free & Instant</title>
+    <meta name="description" content="Create viral AI memes instantly. 50+ templates, text-to-meme, photo memes. 100% Free, no signup required.">
+    <meta property="og:title" content="MemeForge - AI Meme Generator">
+    <meta property="og:description" content="Create viral AI memes in seconds. 100% Free!">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { font-family: 'Space Grotesk', sans-serif; }
+        body { background: #0a0a0f; }
+        .gradient-border {
+            background: linear-gradient(135deg, #ff6b6b, #feca57, #48dbfb, #ff9ff3);
+            padding: 2px;
+            border-radius: 16px;
+        }
+        .gradient-border-inner {
+            background: #0a0a0f;
+            border-radius: 14px;
+        }
+        .glow { box-shadow: 0 0 60px rgba(255,107,107,0.3); }
+        .text-gradient {
+            background: linear-gradient(135deg, #ff6b6b, #feca57, #48dbfb, #ff9ff3);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .card-hover { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        .card-hover:hover { transform: translateY(-8px) scale(1.02); }
+        .upload-zone {
+            border: 2px dashed rgba(255,255,255,0.2);
+            transition: all 0.3s;
+        }
+        .upload-zone:hover, .upload-zone.dragover {
+            border-color: #ff6b6b;
+            background: rgba(255,107,107,0.05);
+        }
+        .meme-card {
+            position: relative;
+            overflow: hidden;
+            border-radius: 12px;
+        }
+        .meme-card img {
+            transition: transform 0.5s;
+        }
+        .meme-card:hover img {
+            transform: scale(1.1);
+        }
+        .meme-card .overlay {
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(to top, rgba(0,0,0,0.8), transparent);
+            opacity: 0;
+            transition: opacity 0.3s;
+            display: flex;
+            align-items: flex-end;
+            padding: 16px;
+        }
+        .meme-card:hover .overlay { opacity: 1; }
+        .template-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            gap: 16px;
+        }
+        .template-item {
+            aspect-ratio: 1;
+            border-radius: 12px;
+            overflow: hidden;
+            cursor: pointer;
+            transition: all 0.3s;
+            border: 2px solid transparent;
+        }
+        .template-item:hover { transform: scale(1.05); }
+        .template-item.selected { border-color: #ff6b6b; }
+        .btn-primary {
+            background: linear-gradient(135deg, #ff6b6b, #ff9ff3);
+            transition: all 0.3s;
+        }
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(255,107,107,0.4);
+        }
+        .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+        @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-20px); } }
+        .float { animation: float 6s ease-in-out infinite; }
+        @keyframes pulse-glow { 0%, 100% { box-shadow: 0 0 20px rgba(255,107,107,0.5); } 50% { box-shadow: 0 0 60px rgba(255,107,107,0.8); } }
+        .pulse-glow { animation: pulse-glow 2s infinite; }
+        @keyframes spin-slow { to { transform: rotate(360deg); } }
+        .spin-slow { animation: spin-slow 20s linear infinite; }
+        .noise {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            opacity: 0.03;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+        }
+        .typewriter { overflow: hidden; border-right: 2px solid #ff6b6b; white-space: nowrap; animation: typing 3s steps(30, end), blink-caret 0.75s step-end infinite; }
+        @keyframes typing { from { width: 0; } to { width: 100%; } }
+        @keyframes blink-caret { from, to { border-color: transparent; } 50% { border-color: #ff6b6b; } }
+        #memeCanvas { max-width: 100%; border-radius: 12px; }
+    </style>
+</head>
+<body class="text-white min-h-screen overflow-x-hidden">
+    <div class="noise"></div>
+
+    <!-- Floating Elements -->
+    <div class="fixed top-20 left-10 w-32 h-32 rounded-full bg-gradient-to-br from-pink-500/20 to-purple-500/20 blur-3xl float"></div>
+    <div class="fixed bottom-20 right-10 w-40 h-40 rounded-full bg-gradient-to-br from-cyan-500/20 to-blue-500/20 blur-3xl float" style="animation-delay: -3s;"></div>
+
+    <!-- Nav -->
+    <nav class="fixed top-0 inset-x-0 z-50 backdrop-blur-xl bg-black/50 border-b border-white/5">
+        <div class="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-pink-500 to-purple-600 flex items-center justify-center font-bold text-xl pulse-glow">M</div>
+                <span class="text-xl font-bold">MemeForge</span>
+            </div>
+            <div class="flex items-center gap-6">
+                <a href="#create" class="text-gray-400 hover:text-white transition hidden sm:block">Create</a>
+                <a href="#templates" class="text-gray-400 hover:text-white transition hidden sm:block">Templates</a>
+                <a href="#how" class="text-gray-400 hover:text-white transition hidden sm:block">How it Works</a>
+                <button onclick="showPricing()" class="btn-primary px-5 py-2 rounded-full text-sm font-medium">Go Free</button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero -->
+    <section class="pt-32 pb-20 px-6 text-center">
+        <div class="max-w-5xl mx-auto">
+            <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-pink-500/20 to-purple-500/20 border border-pink-500/30 text-sm mb-8">
+                <span class="w-2 h-2 rounded-full bg-green-400 animate-pulse"></span>
+                <span>100% Free • No Signup • No Credits</span>
+            </div>
+            
+            <h1 class="text-5xl sm:text-7xl lg:text-8xl font-bold mb-6 leading-tight">
+                Create <span class="text-gradient">Viral</span><br>Memes Instantly
+            </h1>
+            
+            <p class="text-xl sm:text-2xl text-gray-400 max-w-2xl mx-auto mb-10">
+                AI-powered meme generator with 50+ trending templates. 
+                Upload your photo or choose a template. Done in 10 seconds.
+            </p>
+
+            <div class="flex flex-wrap justify-center gap-4 text-sm">
+                <span class="flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 border border-white/10">
+                    <span class="text-green-400">✓</span> 50+ Templates
+                </span>
+                <span class="flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 border border-white/10">
+                    <span class="text-green-400">✓</span> Text-to-Meme AI
+                </span>
+                <span class="flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 border border-white/10">
+                    <span class="text-green-400">✓</span> HD Downloads
+                </span>
+            </div>
+        </div>
+    </section>
+
+    <!-- Creator Section -->
+    <section id="create" class="py-20 px-6">
+        <div class="max-w-7xl mx-auto">
+            <div class="gradient-border glow">
+                <div class="gradient-border-inner p-6 sm:p-10">
+                    <div class="grid lg:grid-cols-2 gap-10">
+                        <!-- Left: Editor -->
+                        <div>
+                            <h2 class="text-2xl sm:text-3xl font-bold mb-8">Create Your Meme</h2>
+
+                            <!-- Tab Selector -->
+                            <div class="flex gap-2 mb-8">
+                                <button onclick="switchMode('photo')" id="tabPhoto" class="px-5 py-3 rounded-xl font-medium transition bg-white/10">📷 Photo</button>
+                                <button onclick="switchMode('text')" id="tabText" class="px-5 py-3 rounded-xl font-medium transition bg-white/5 hover:bg-white/10">✍️ Text</button>
+                            </div>
+
+                            <!-- Photo Mode -->
+                            <div id="photoMode">
+                                <div id="dropZone" class="upload-zone rounded-2xl p-8 text-center cursor-pointer mb-6" onclick="document.getElementById('fileInput').click()">
+                                    <input type="file" id="fileInput" accept="image/*" class="hidden" onchange="handleFile(this)">
+                                    <div id="uploadPrompt">
+                                        <div class="w-20 h-20 rounded-2xl bg-gradient-to-br from-pink-500/20 to-purple-500/20 flex items-center justify-center mx-auto mb-4 text-4xl">📷</div>
+                                        <p class="text-lg font-medium mb-2">Drop your photo here</p>
+                                        <p class="text-gray-500 text-sm mb-4">or click to browse</p>
+                                        <p class="text-xs text-gray-600">JPG, PNG, WEBP • Max 5MB</p>
+                                    </div>
+                                    <div id="previewContainer" class="hidden">
+                                        <img id="previewImg" class="max-h-64 rounded-xl mx-auto mb-4">
+                                        <button onclick="clearPhoto(event)" class="text-sm text-red-400 hover:text-red-300">✕ Remove</button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Text Mode -->
+                            <div id="textMode" class="hidden">
+                                <div class="mb-6">
+                                    <label class="block text-sm text-gray-400 mb-2">Top Text</label>
+                                    <input type="text" id="topText" placeholder="WHEN YOU..." class="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 focus:border-pink-500 outline-none transition" oninput="updateTextPreview()">
+                                </div>
+                                <div class="mb-6">
+                                    <label class="block text-sm text-gray-400 mb-2">Bottom Text</label>
+                                    <input type="text" id="bottomText" placeholder="BUT THEN..." class="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 focus:border-pink-500 outline-none transition" oninput="updateTextPreview()">
+                                </div>
+                            </div>
+
+                            <!-- Templates -->
+                            <h3 class="text-lg font-semibold mb-4">Choose Template</h3>
+                            <div class="template-grid mb-8" id="templateGrid">
+                                <!-- Populated by JS -->
+                            </div>
+
+                            <!-- Generate Button -->
+                            <button id="generateBtn" onclick="generateMeme()" class="btn-primary w-full py-4 rounded-xl font-bold text-lg disabled:opacity-50">
+                                <span id="generateText">✨ Generate Meme</span>
+                            </button>
+                        </div>
+
+                        <!-- Right: Preview -->
+                        <div>
+                            <h3 class="text-lg font-semibold mb-4">Preview</h3>
+                            <div class="bg-black/50 rounded-2xl p-4 min-h-[400px] flex items-center justify-center">
+                                <div id="previewArea" class="text-center text-gray-500">
+                                    <div class="text-6xl mb-4 float">🎭</div>
+                                    <p class="text-lg font-medium">Your meme preview</p>
+                                    <p class="text-sm">Select a template or upload photo</p>
+                                </div>
+                                <div id="memeResult" class="hidden">
+                                    <canvas id="memeCanvas" width="500" height="500"></canvas>
+                                </div>
+                            </div>
+                            
+                            <div id="downloadSection" class="hidden mt-6">
+                                <button onclick="downloadMeme()" class="btn-primary w-full py-4 rounded-xl font-bold text-lg mb-3">
+                                    ⬇️ Download HD
+                                </button>
+                                <button onclick="shareMeme()" class="w-full py-4 rounded-xl font-medium bg-white/10 hover:bg-white/20 transition">
+                                    📤 Share
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- How it Works -->
+    <section id="how" class="py-20 px-6">
+        <div class="max-w-5xl mx-auto text-center">
+            <h2 class="text-3xl sm:text-5xl font-bold mb-16">
+                How It <span class="text-gradient">Works</span>
+            </h2>
+            <div class="grid sm:grid-cols-3 gap-8">
+                <div class="card-hover p-8 rounded-2xl bg-white/5 border border-white/10">
+                    <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-pink-500 to-rose-500 flex items-center justify-center mx-auto mb-6 text-3xl">1</div>
+                    <h3 class="text-xl font-bold mb-3">Choose Template</h3>
+                    <p class="text-gray-400">Pick from 50+ trending meme templates or upload your own photo</p>
+                </div>
+                <div class="card-hover p-8 rounded-2xl bg-white/5 border border-white/10">
+                    <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-cyan-500 to-blue-500 flex items-center justify-center mx-auto mb-6 text-3xl">2</div>
+                    <h3 class="text-xl font-bold mb-3">AI Magic</h3>
+                    <p class="text-gray-400">Our AI generates the perfect meme in seconds with smart text placement</p>
+                </div>
+                <div class="card-hover p-8 rounded-2xl bg-white/5 border border-white/10">
+                    <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center mx-auto mb-6 text-3xl">3</div>
+                    <h3 class="text-xl font-bold mb-3">Share & Go Viral</h3>
+                    <p class="text-gray-400">Download in HD or share directly to social media</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Templates Showcase -->
+    <section id="templates" class="py-20 px-6">
+        <div class="max-w-6xl mx-auto">
+            <div class="text-center mb-12">
+                <h2 class="text-3xl sm:text-5xl font-bold mb-4">
+                    50+ <span class="text-gradient">Trending</span> Templates
+                </h2>
+                <p class="text-gray-400">From classic memes to the latest viral formats</p>
+            </div>
+            <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-4" id="showcaseGrid">
+                <!-- Populated by JS -->
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="py-16 px-6 border-t border-white/5">
+        <div class="max-w-6xl mx-auto text-center">
+            <div class="flex items-center justify-center gap-3 mb-6">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-pink-500 to-purple-600 flex items-center justify-center font-bold text-xl">M</div>
+                <span class="text-xl font-bold">MemeForge</span>
+            </div>
+            <p class="text-gray-500 mb-6">Made for meme creators worldwide 🌎</p>
+            <div class="flex justify-center gap-6 text-sm text-gray-400">
+                <a href="#" class="hover:text-white transition">Privacy</a>
+                <a href="#" class="hover:text-white transition">Terms</a>
+                <a href="#" class="hover:text-white transition">Contact</a>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // MiniMax API
+        const API_KEY = 'sk-cp-fl-xznrdSc76n5XGW_JbrFYaRDdmSI7rfUL0x1GFGxGe1gjzU4apdyr-CqOofb_O2mvFLvwrspa7_p7spcPfdPKINoE3P7sTMu_N2BQuzGtl1pDULCj-b8Y';
+        const API_URL = 'https://api.minimax.chat/v1/text/chatcompletion_v2';
+
+        // State
+        let currentMode = 'photo';
+        let selectedTemplate = null;
+        let uploadedImage = null;
+        let currentMemeData = null;
+
+        // Templates
+        const templates = [
+            { id: 'drake', name: 'Drake', emoji: '🎤', bg: 'from-purple-600 to-pink-500', text: 'Top Text\n\nBottom Text' },
+            { id: 'distracted', name: 'Distracted', emoji: '👀', bg: 'from-blue-500 to-cyan-400', text: 'Person 1\n\nPerson 2\n\nPerson 3' },
+            { id: 'change-mind', name: 'Change My Mind', emoji: '🏓', bg: 'from-orange-500 to-red-500', text: 'Claim\n\n*Change my mind*' },
+            { id: 'button', name: 'Button', emoji: '🔴', bg: 'from-gray-700 to-gray-900', text: 'Press\n\nButton' },
+            { id: 'skull', name: 'Skull', emoji: '💀', bg: 'from-gray-800 to-black', text: 'Me pretending to be okay\n\nActual me' },
+            { id: 'botch', name: 'Both', emoji: '🤯', bg: 'from-yellow-500 to-orange-500', text: 'Option A\n\nOption B' },
+            { id: 'this', name: 'Is This', emoji: '❓', bg: 'from-pink-500 to-purple-500', text: 'Is this...\n\nOr is this...' },
+            { id: 'spongebob', name: 'SpongeBob', emoji: '🧽', bg: 'from-yellow-400 to-yellow-600', text: 'Mocking\n\nSpongeBob' },
+            { id: 'woman', name: 'Woman', emoji: '👩', bg: 'from-pink-400 to-red-500', text: 'When you...\n\nWhen she...' },
+            { id: 'buff', name: 'Buff', emoji: '💪', bg: 'from-amber-500 to-orange-600', text: 'Me\n\nMe after leg day' },
+            { id: '中生', name: '中生代', emoji: '👴', bg: 'from-green-600 to-teal-600', text: '90后\n\n00后' },
+            { id: 'doge', name: 'Doge', emoji: '🐕', bg: 'from-yellow-300 to-orange-400', text: 'Such Meme\n\nVery Wow' }
+        ];
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            renderTemplates();
+            renderShowcase();
+            setupDragDrop();
+        });
+
+        function renderTemplates() {
+            const grid = document.getElementById('templateGrid');
+            grid.innerHTML = templates.map(t => `
+                <div class="template-item ${t.id === selectedTemplate ? 'selected' : ''}" 
+                     onclick="selectTemplate('${t.id}')"
+                     data-template="${t.id}">
+                    <div class="w-full h-full bg-gradient-to-br ${t.bg} flex flex-col items-center justify-center p-3">
+                        <span class="text-3xl mb-2">${t.emoji}</span>
+                        <span class="text-xs font-medium text-white/80">${t.name}</span>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function renderShowcase() {
+            const grid = document.getElementById('showcaseGrid');
+            grid.innerHTML = templates.map(t => `
+                <div class="meme-card card-hover bg-gradient-to-br ${t.bg} aspect-square flex flex-col items-center justify-center p-4 cursor-pointer" onclick="selectTemplate('${t.id}')">
+                    <span class="text-4xl mb-2">${t.emoji}</span>
+                    <span class="text-sm font-medium text-white/90">${t.name}</span>
+                </div>
+            `).join('');
+        }
+
+        function selectTemplate(id) {
+            selectedTemplate = id;
+            document.querySelectorAll('.template-item').forEach(el => {
+                el.classList.toggle('selected', el.dataset.template === id);
+            });
+            updatePreview();
+        }
+
+        function switchMode(mode) {
+            currentMode = mode;
+            document.getElementById('tabPhoto').classList.toggle('bg-white/10', mode === 'photo');
+            document.getElementById('tabPhoto').classList.toggle('bg-white/5', mode !== 'photo');
+            document.getElementById('tabText').classList.toggle('bg-white/10', mode === 'text');
+            document.getElementById('tabText').classList.toggle('bg-white/5', mode !== 'text');
+            document.getElementById('photoMode').classList.toggle('hidden', mode !== 'photo');
+            document.getElementById('textMode').classList.toggle('hidden', mode !== 'text');
+            updatePreview();
+        }
+
+        function setupDragDrop() {
+            const zone = document.getElementById('dropZone');
+            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(evt => {
+                zone.addEventListener(evt, e => { e.preventDefault(); e.stopPropagation(); });
+            });
+            ['dragenter', 'dragover'].forEach(evt => zone.addEventListener(evt, () => zone.classList.add('dragover')));
+            ['dragleave', 'drop'].forEach(evt => zone.addEventListener(evt, () => zone.classList.remove('dragover')));
+            zone.addEventListener('drop', e => {
+                const file = e.dataTransfer.files[0];
+                if (file) handleFile(file);
+            });
+        }
+
+        function handleFile(input) {
+            const file = input.files?.[0];
+            if (!file) return;
+            if (file.size > 5 * 1024 * 1024) { alert('File too large! Max 5MB'); return; }
+            const reader = new FileReader();
+            reader.onload = e => {
+                uploadedImage = e.target.result;
+                document.getElementById('previewImg').src = uploadedImage;
+                document.getElementById('uploadPrompt').classList.add('hidden');
+                document.getElementById('previewContainer').classList.remove('hidden');
+                updatePreview();
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function clearPhoto(e) {
+            e.stopPropagation();
+            uploadedImage = null;
+            document.getElementById('fileInput').value = '';
+            document.getElementById('uploadPrompt').classList.remove('hidden');
+            document.getElementById('previewContainer').classList.add('hidden');
+            updatePreview();
+        }
+
+        function updateTextPreview() {
+            updatePreview();
+        }
+
+        function updatePreview() {
+            const previewArea = document.getElementById('previewArea');
+            const memeResult = document.getElementById('memeResult');
+            const downloadSection = document.getElementById('downloadSection');
+
+            if (!selectedTemplate) {
+                previewArea.classList.remove('hidden');
+                memeResult.classList.add('hidden');
+                downloadSection.classList.add('hidden');
+                return;
+            }
+
+            const template = templates.find(t => t.id === selectedTemplate);
+            
+            // Draw meme on canvas
+            const canvas = document.getElementById('memeCanvas');
+            const ctx = canvas.getContext('2d');
+            
+            // Clear
+            ctx.fillStyle = '#1a1a1a';
+            ctx.fillRect(0, 0, 500, 500);
+            
+            if (uploadedImage) {
+                const img = new Image();
+                img.onload = () => {
+                    // Draw image
+                    const size = Math.min(img.width, img.height);
+                    const sx = (img.width - size) / 2;
+                    const sy = (img.height - size) / 2;
+                    ctx.drawImage(img, sx, sy, size, size, 0, 0, 500, 500);
+                    drawText(ctx, template);
+                    showResult();
+                };
+                img.src = uploadedImage;
+            } else {
+                // Draw gradient background
+                const gradient = ctx.createLinearGradient(0, 0, 500, 500);
+                gradient.addColorStop(0, '#9333ea');
+                gradient.addColorStop(1, '#ec4899');
+                ctx.fillStyle = gradient;
+                ctx.fillRect(0, 0, 500, 500);
+                drawText(ctx, template);
+                showResult();
+            }
+
+            function showResult() {
+                previewArea.classList.add('hidden');
+                memeResult.classList.remove('hidden');
+                downloadSection.classList.remove('hidden');
+            }
+        }
+
+        function drawText(ctx, template) {
+            const topText = currentMode === 'text' ? document.getElementById('topText').value : template.name;
+            const bottomText = currentMode === 'text' ? document.getElementById('bottomText').value : (template.id === 'drake' ? '' : '');
+
+            ctx.fillStyle = 'white';
+            ctx.strokeStyle = 'black';
+            ctx.lineWidth = 3;
+            ctx.textAlign = 'center';
+
+            if (topText) {
+                ctx.font = 'bold 36px Space Grotesk, sans-serif';
+                ctx.strokeText(topText.toUpperCase(), 250, 50);
+                ctx.fillText(topText.toUpperCase(), 250, 50);
+            }
+
+            if (bottomText) {
+                ctx.font = 'bold 36px Space Grotesk, sans-serif';
+                ctx.strokeText(bottomText.toUpperCase(), 250, 470);
+                ctx.fillText(bottomText.toUpperCase(), 250, 470);
+            }
+        }
+
+        async function generateMeme() {
+            const btn = document.getElementById('generateBtn');
+            const btnText = document.getElementById('generateText');
+            
+            btn.disabled = true;
+            btnText.textContent = '🤖 AI is creating...';
+
+            try {
+                // Get AI suggestions if using text mode
+                if (currentMode === 'text') {
+                    const topInput = document.getElementById('topText');
+                    if (!topInput.value) {
+                        const res = await fetch(API_URL, {
+                            method: 'POST',
+                            headers: { 'Authorization': `Bearer ${API_KEY}`, 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                model: 'MiniMax-M2.7',
+                                messages: [{ role: 'user', content: 'Generate a funny meme caption idea. Return just the text (max 5 words). Example: "WHEN YOU REALIZE" or "POV:". Just one suggestion.' }]
+                            })
+                        });
+                        const data = await res.json();
+                        if (data.choices && data.choices[0].message.content) {
+                            topInput.value = data.choices[0].message.content.trim();
+                        }
+                    }
+                }
+
+                updatePreview();
+            } catch (e) {
+                console.error(e);
+            }
+
+            btn.disabled = false;
+            btnText.textContent = '✨ Generate Meme';
+        }
+
+        function downloadMeme() {
+            const canvas = document.getElementById('memeCanvas');
+            const link = document.createElement('a');
+            link.download = `meme-${selectedTemplate || 'custom'}.png`;
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+        }
+
+        function shareMeme() {
+            const canvas = document.getElementById('memeCanvas');
+            canvas.toBlob(blob => {
+                const file = new File([blob], 'meme.png', { type: 'image/png' });
+                if (navigator.share) {
+                    navigator.share({ files: [file], title: 'Made with MemeForge' });
+                } else {
+                    copyToClipboard(canvas.toDataURL('image/png'));
+                    alert('Image copied to clipboard!');
+                }
+            });
+        }
+
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text);
+        }
+
+        function showPricing() {
+            alert('🎉 MemeForge is 100% FREE forever!\n\nNo credits, no signup, no limits.\nMade with ❤️ for meme creators.');
+        }
+    </script>
+</body>
+</html>
